@@ -1,20 +1,72 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect } from "react";
+import { StyleSheet } from "react-native";
+import { WebView } from "react-native-webview";
+import Constants from "expo-constants";
+import { walmartService } from "./services/walmart.service";
+import { IMessage, MessageTypes } from "./services/base.service";
+import { ErrorBase, ErrorCodes } from "./services/error";
 
 export default function App() {
+  const onMessage = useCallback(async (message: IMessage) => {
+    switch (message.type) {
+      case MessageTypes.ordersResponse: {
+        console.log("# ORDERS LIST #");
+        console.log(message.data.data);
+
+        try {
+          await walmartService.getOrders();
+        } catch (e) {
+          if (e instanceof ErrorBase) {
+            switch (e.errorCode) {
+              case ErrorCodes.unauthorizedError: {
+                console.error("Unauthorized Error", e.message, e.data);
+                break;
+              }
+              case ErrorCodes.apiResponseError: {
+                console.error("API Response Error", e.message, e.data);
+                break;
+              }
+              default: {
+                break;
+              }
+            }
+          }
+        }
+
+        console.log("# END OF ORDER LIST #");
+        break;
+      }
+      case MessageTypes.loggedIn: {
+        console.log("# LOGGED IN #");
+        break;
+      }
+      case MessageTypes.loggedOut: {
+        console.log("# LOGGED OUT #");
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    walmartService.setMessageHandler(onMessage);
+  }, [onMessage]);
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <WebView
+      style={styles.container}
+      source={{ uri: "https://walmart.com" }}
+      onMessage={walmartService.onMessage}
+      injectedJavaScript={walmartService.getSDKCode()}
+    />
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginTop: Constants.statusBarHeight,
   },
 });
